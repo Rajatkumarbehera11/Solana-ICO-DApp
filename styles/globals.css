@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen,
+    Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+.wallet-adapter-button {
+  background-color: #2563eb !important; /* blue-600 */
+  color: #fff !important;
+  border-radius: 0.5rem !important;
+  transition: background 0.2s;
+}
+
+.wallet-adapter-button:hover {
+  background-color: #1d4ed8 !important; /* blue-700 */
+}
