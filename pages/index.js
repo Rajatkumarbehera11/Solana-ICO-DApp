@@ -438,7 +438,7 @@ export default function Home(){
               </div>
             )}
             {!wallet.connected &&(
-              <div className="py-8 text-center text-gray-600"> Please connect your to continue </div>
+              <div className="py-8 text-center text-gray-600"> Please connect your wallet to continue </div>
             )}
 
           </div>
