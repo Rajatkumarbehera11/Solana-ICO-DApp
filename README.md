@@ -95,7 +95,4 @@ For any queries or support, please contact the developer:
 **Email:** [rajatkumarbehera2003@gmail.com](mailto:rajatkumarbehera2003@gmail.com)
 
 
-"# Solana-ICO-DApp" 
-"# Solana-ICO-DApp" 
-"# Solana-ICO-DApp" 
-"# Solana-ICO-DApp" 
+
