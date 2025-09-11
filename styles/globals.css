@@ -8,6 +8,8 @@ body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen,
     Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
+  background-color: white;
+  color: #1f2937; /* gray-800 */
 }
 
 a {
@@ -18,6 +20,7 @@ a {
 * {
   box-sizing: border-box;
 }
+
 .wallet-adapter-button {
   background-color: #2563eb !important; /* blue-600 */
   color: #fff !important;
@@ -27,4 +30,20 @@ a {
 
 .wallet-adapter-button:hover {
   background-color: #1d4ed8 !important; /* blue-700 */
+}
+
+/* Dark mode styles */
+.dark html,
+.dark body {
+  background-color: #0f172a; /* dark-900 */
+  color: #e0e7ff; /* indigo-100 */
+}
+
+.dark .wallet-adapter-button {
+  background-color: #4338ca !important; /* indigo-700 */
+  color: #e0e7ff !important;
+}
+
+.dark .wallet-adapter-button:hover {
+  background-color: #3730a3 !important; /* indigo-800 */
 }
