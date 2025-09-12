@@ -19,6 +19,10 @@ import IDL from "../lib/idl.json";
 const ENV_PROGRAM_ID = process.env.NEXT_PUBLIC_PROGRAM_ID;
 const ENV_ICO_MINT = process.env.NEXT_PUBLIC_ICO_MINT;
 
+if (!ENV_PROGRAM_ID || !ENV_ICO_MINT) {
+  throw new Error("Environment variables NEXT_PUBLIC_PROGRAM_ID and NEXT_PUBLIC_ICO_MINT must be set");
+}
+
 const PROGRAM_ID = new PublicKey(ENV_PROGRAM_ID);
 const ICO_MINT = new PublicKey(ENV_ICO_MINT);
 const TOKEN_DECIMALS = new BN(1_000_000_000);

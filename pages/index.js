@@ -35,248 +35,254 @@ const PROGRAM_ID = new PublicKey(ENV_PROGRAM_ID);
 const ICO_MINT = new PublicKey(ENV_ICO_MINT);
 const TOKEN_DECIMALS = new BN(1_000_000_000);
 
-
-
-export default function Home(){
-  const {connection} =useConnection();
+export default function Home() {
+  const { connection } = useConnection();
   const wallet = useWallet();
-  const [loading,setLoading]= useState(false);
-  const [isAdmin,setIsAdmin]= useState(false);
-  const [icoData,setIcoData]= useState(null );
-  const [amount,setAmount]= useState("");
-  const [userTokenBalance,setUserTokenBalance]= useState(null);
+  const [loading, setLoading] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [icoData, setIcoData] = useState(null);
+  const [amount, setAmount] = useState("");
+  const [userTokenBalance, setUserTokenBalance] = useState(null);
 
-  useEffect(()=>{
+  useEffect(() => {
     fetchIcoData(); // Fetch ICO data regardless of wallet connection
-    if (wallet.connected){
+    if (wallet.connected) {
       checkIfAdmin();
       fetchUserTokenBalance();
     }
-  },[wallet.connected]);
-  const getProgram =()=>{
+  }, [wallet.connected]);
+
+  const getProgram = () => {
     if (!wallet.connected) return null;
-    const provider = new AnchorProvider(connection,wallet,{
-    commitment:"confirmed",
-  });
-  return new Program(IDL,PROGRAM_ID,provider);
+    const provider = new AnchorProvider(connection, wallet, {
+      commitment: "confirmed",
+    });
+    return new Program(IDL, PROGRAM_ID, provider);
   };
-  const checkIfAdmin = async ()=> {
-    try{
-      const program =getProgram();
+
+  const checkIfAdmin = async () => {
+    try {
+      const program = getProgram();
       if (!program) return;
 
-      const [dataPda]= PublicKey.findProgramAddressSync(
+      const [dataPda] = PublicKey.findProgramAddressSync(
         [Buffer.from("data"), wallet.publicKey.toBuffer()],
         program.programId
       );
-      try{
+      try {
         const data = await program.account.data.fetch(dataPda);
         setIsAdmin(data.admin.equals(wallet.publicKey));
-
-      }catch(error){
+      } catch (error) {
         const accounts = await program.account.data.all();
-        if(accounts.length==0){
+        if (accounts.length == 0) {
           setIsAdmin(true);
-        }
-        else {
+        } else {
           setIsAdmin(false);
           setIcoData(accounts[0].account);
         }
       }
-    }catch(error){
-      console.log("Error checking admin:",error);
+    } catch (error) {
+      console.log("Error checking admin:", error);
       setIsAdmin(false);
     }
   };
-  const  fetchIcoData = async ()=>{
+
+  const fetchIcoData = async () => {
     try {
       let program;
       if (wallet.connected) {
         program = getProgram();
       } else {
         // Create a read-only provider for fetching data without wallet
-        const provider = new AnchorProvider(connection, null, { commitment: "confirmed" });
+        const provider = new AnchorProvider(connection, null, {
+          commitment: "confirmed",
+        });
         program = new Program(IDL, PROGRAM_ID, provider);
       }
-      if(!program) return;
-      const accounts =await program.account.data.all();
-      if(accounts.length>0){
+      if (!program) return;
+      const accounts = await program.account.data.all();
+      if (accounts.length > 0) {
         setIcoData(accounts[0].account);
       }
-    }catch(error) {
-
-      console.log("Error fetching Ico data",error)
+    } catch (error) {
+      console.log("Error fetching Ico data", error);
     }
   };
-  const createIcoAta =async  ()=>{
 
-    try{
-      if (!amount || parseInt(amount)<=0){
+  const createIcoAta = async () => {
+    try {
+      if (!amount || parseInt(amount) <= 0) {
         alert("please enter a valid amount");
+        return;
       }
       setLoading(true);
       const program = getProgram();
-      if(!program) return;
-      
+      if (!program) return;
+
       const [icoAtaPda] = await PublicKey.findProgramAddressSync(
         [ICO_MINT.toBuffer()],
         program.programId
       );
-      const [dataPda] = await PublicKey.findProgramAddress(
-        [Buffer.from("data"),wallet.publicKey.toBuffer()],
+      const [dataPda] = await PublicKey.findProgramAddressSync(
+        [Buffer.from("data"), wallet.publicKey.toBuffer()],
         program.programId
       );
-      const adminIcoAta =await getAssociatedTokenAddress(
+      const adminIcoAta = await getAssociatedTokenAddress(
         ICO_MINT,
         wallet.publicKey
       );
-      await program.methods.createIcoAta(new BN(amount)).accounts({
-        icoAtaForIcoProgram : icoAtaPda,
-        data : dataPda,
-        icoMint :ICO_MINT,
-        icoAtaForAdmin : adminIcoAta,
-        admin : wallet.publicKey,
-        systemProgram : SystemProgram.programId,
-        tokenprogram : TOKEN_PROGRAM_ID,
-        rent : SYSVAR_RENT_PUBKEY,
-      })
-      .rpc();
+      await program.methods
+        .createIcoAta(new BN(amount))
+        .accounts({
+          icoAtaForIcoProgram: icoAtaPda,
+          data: dataPda,
+          icoMint: ICO_MINT,
+          icoAtaForAdmin: adminIcoAta,
+          admin: wallet.publicKey,
+          systemProgram: SystemProgram.programId,
+          tokenprogram: TOKEN_PROGRAM_ID,
+          rent: SYSVAR_RENT_PUBKEY,
+        })
+        .rpc();
       alert("Ico initialised Sucessfully!");
-    }catch(error){
-      console.log("Error inisialising Ico",error);
+    } catch (error) {
+      console.log("Error inisialising Ico", error);
       alert(`Error:${error.message}`);
-    } finally{
+    } finally {
       setLoading(false);
     }
   };
-  const depositeIco =async  ()=>{
 
-    try{
-      if (!amount || parseInt(amount)<=0){
+  const depositeIco = async () => {
+    try {
+      if (!amount || parseInt(amount) <= 0) {
         alert("please enter a valid amount");
+        return;
       }
       setLoading(true);
       const program = getProgram();
-      if(!program) return;
-      
+      if (!program) return;
+
       const [icoAtaPda] = await PublicKey.findProgramAddressSync(
         [ICO_MINT.toBuffer()],
         program.programId
       );
-      const [dataPda] = await PublicKey.findProgramAddress(
-        [Buffer.from("data"),wallet.publicKey.toBuffer()],
+      const [dataPda] = await PublicKey.findProgramAddressSync(
+        [Buffer.from("data"), wallet.publicKey.toBuffer()],
         program.programId
       );
-      const adminIcoAta =await getAssociatedTokenAddress(
+      const adminIcoAta = await getAssociatedTokenAddress(
         ICO_MINT,
         wallet.publicKey
       );
-      await program.methods.depositIcoInAta(new BN(amount)).accounts({
-        icoAtaForIcoProgram : icoAtaPda,
-        data : dataPda,
-        icoMint :ICO_MINT,
-        icoAtaForAdmin : adminIcoAta,
-        admin : wallet.publicKey,
-        tokenprogram : TOKEN_PROGRAM_ID,
-        
-      })
-      .rpc();
+      await program.methods
+        .depositIcoInAta(new BN(amount))
+        .accounts({
+          icoAtaForIcoProgram: icoAtaPda,
+          data: dataPda,
+          icoMint: ICO_MINT,
+          icoAtaForAdmin: adminIcoAta,
+          admin: wallet.publicKey,
+          tokenprogram: TOKEN_PROGRAM_ID,
+        })
+        .rpc();
       alert("Token Deposited Sucessfully!");
-    }catch(error){
-      console.log("Error inisialising Ico",error);
+    } catch (error) {
+      console.log("Error inisialising Ico", error);
       alert(`Error:${error.message}`);
-    } finally{
+    } finally {
       setLoading(false);
     }
   };
-  const buyTokens =async  ()=>{
 
-    try{
-      if (!amount || parseInt(amount)<=0){
+  const buyTokens = async () => {
+    try {
+      if (!amount || parseInt(amount) <= 0) {
         alert("please enter a valid amount");
+        return;
       }
-      if (!icoData || !icoData.admin) { // <-- FIX: check for icoData and admin
-      alert("ICO data not loaded. Please wait or refresh.");
-      return;
-    }
+      if (!icoData || !icoData.admin) {
+        // <-- FIX: check for icoData and admin
+        alert("ICO data not loaded. Please wait or refresh.");
+        return;
+      }
       setLoading(true);
       const program = getProgram();
-      if(!program) return;
+      if (!program) return;
 
-      const solCost = parseInt(amount)*0.001;
+      const solCost = parseInt(amount) * 0.001;
       const balance = await connection.getBalance(wallet.publicKey);
-      if(balance <solCost*1e9 +5000) {
+      if (balance < solCost * 1e9 + 5000) {
         alert(`Insufficient balance. Need ${solCost.toFixed(3)} Sol plus fee`);
         return;
       }
-      
-      const [icoAtaPda,bump] = await PublicKey.findProgramAddressSync(
+
+      const [icoAtaPda, bump] = await PublicKey.findProgramAddressSync(
         [ICO_MINT.toBuffer()],
         program.programId
       );
-      const [dataPda] = await PublicKey.findProgramAddress(
-        [Buffer.from("data"),icoData.admin.toBuffer()],
+      const [dataPda] = await PublicKey.findProgramAddressSync(
+        [Buffer.from("data"), icoData.admin.toBuffer()],
         program.programId
       );
       const userIcoAta = await getAssociatedTokenAddress(
         ICO_MINT,
-        wallet.publicKey,
+        wallet.publicKey
       );
-      try{
-        await getAccount(connection,userIcoAta);
-      }catch(error){
+      try {
+        await getAccount(connection, userIcoAta);
+      } catch (error) {
         const createAtaIx = createAssociatedTokenAccountInstruction(
           wallet.publicKey,
           userIcoAta,
           wallet.publicKey,
-          ICO_MINT,
+          ICO_MINT
         );
         const transaction = new Transaction().add(createAtaIx);
-        await wallet.sendTransaction(transaction,connection);
-        await new Promise ((resolve)=> setTimeout(resolve,2000)); 
+        await wallet.sendTransaction(transaction, connection);
+        await new Promise((resolve) => setTimeout(resolve, 2000));
       }
-      await program.methods.buyToken(bump,new BN(amount)).accounts({
-        icoAtaForIcoProgram : icoAtaPda,
-        data : dataPda,
-        icoMint :ICO_MINT,
-        icoAtaForUser : userIcoAta,
-        user : wallet.publicKey,
-        admin : icoData.admin,
-        tokenprogram : TOKEN_PROGRAM_ID,
-        systemProgram:SystemProgram.programId,
-      })
-      .rpc();
+      await program.methods
+        .buyToken(bump, new BN(amount))
+        .accounts({
+          icoAtaForIcoProgram: icoAtaPda,
+          data: dataPda,
+          icoMint: ICO_MINT,
+          icoAtaForUser: userIcoAta,
+          user: wallet.publicKey,
+          admin: icoData.admin,
+          tokenprogram: TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+        })
+        .rpc();
       alert(` Sucessfully purchased ${amount} token!`);
       await fetchIcoData();
       await fetchUserTokenBalance();
-    }catch(error){
-      console.log("Error buying",error);
+    } catch (error) {
+      console.log("Error buying", error);
       alert(`Error:${error.message}`);
-    } finally{
+    } finally {
       setLoading(false);
     }
   };
-  const fetchUserTokenBalance = async ()=>{
-    try{
-      if (!wallet.connected) return;
-      const userAta = await getAssociatedTokenAddress(
-        ICO_MINT,
-        wallet.publicKey,
-      
-      );
-      try{
-        const tokenAccount = await getAccount(connection,userAta);
-        setUserTokenBalance(tokenAccount.amount.toString());
 
-      }catch(error){
+  const fetchUserTokenBalance = async () => {
+    try {
+      if (!wallet.connected) return;
+      const userAta = await getAssociatedTokenAddress(ICO_MINT, wallet.publicKey);
+      try {
+        const tokenAccount = await getAccount(connection, userAta);
+        setUserTokenBalance(tokenAccount.amount.toString());
+      } catch (error) {
         console.log(error);
-        setUserTokenBalance('0');
+        setUserTokenBalance("0");
       }
-    }catch(error){
-      console.log("Error fetching token balance",error);
-      setUserTokenBalance('0');
+    } catch (error) {
+      console.log("Error fetching token balance", error);
+      setUserTokenBalance("0");
     }
   };
+
   // If user is admin, show the admin dashboard
   if (wallet.connected && isAdmin) {
     return (
@@ -306,94 +312,115 @@ export default function Home(){
   // If not connected, show connect wallet button
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-dark-900 dark:via-dark-800 dark:to-dark-700 p-4">
-      <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-dark-100">Welcome to the ICO DApp</h1>
+      {/* Animated Background Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {/* Floating Geometric Shapes */}
+        <div className="absolute top-20 left-10 w-20 h-20 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full opacity-20 animate-float-slow"></div>
+        <div className="absolute top-40 right-20 w-16 h-16 bg-gradient-to-r from-green-400 to-teal-500 rounded-lg opacity-30 animate-float-medium transform rotate-45"></div>
+        <div className="absolute bottom-32 left-1/4 w-24 h-24 bg-gradient-to-r from-purple-400 to-pink-500 rounded-full opacity-25 animate-float-fast"></div>
+        <div className="absolute top-1/3 right-10 w-12 h-12 bg-gradient-to-r from-orange-400 to-red-500 rounded-lg opacity-35 animate-float-slow transform rotate-12"></div>
+        <div className="absolute bottom-20 right-1/3 w-18 h-18 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full opacity-20 animate-float-medium"></div>
 
-      {/* ICO Information Section */}
-      {icoData && (
-        <div className="max-w-4xl w-full mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            {/* Token Supply */}
-            <div className="bg-white dark:bg-dark-800 rounded-xl shadow-sm border border-gray-200 dark:border-dark-700 p-6">
-              <div className="flex items-center">
-                <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                  <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                  </svg>
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600 dark:text-dark-400">Total Supply</p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-dark-100">
-                    {icoData.totalTokens ? icoData.totalTokens.toString() : "0"}
-                  </p>
-                </div>
-              </div>
-            </div>
+        {/* Animated Circles */}
+        <div className="absolute top-16 left-1/3 w-32 h-32 border-2 border-blue-300 dark:border-blue-600 rounded-full opacity-10 animate-pulse-slow"></div>
+        <div className="absolute bottom-16 right-1/4 w-40 h-40 border-2 border-purple-300 dark:border-purple-600 rounded-full opacity-15 animate-pulse-medium"></div>
+        <div className="absolute top-1/2 left-16 w-28 h-28 border-2 border-green-300 dark:border-green-600 rounded-full opacity-12 animate-pulse-fast"></div>
 
-            {/* Tokens Available */}
-            <div className="bg-white dark:bg-dark-800 rounded-xl shadow-sm border border-gray-200 dark:border-dark-700 p-6">
-              <div className="flex items-center">
-                <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
-                  <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600 dark:text-dark-400">Available</p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-dark-100">
-                    {icoData.totalTokens && icoData.tokenSold ? (icoData.totalTokens - icoData.tokenSold).toString() : "0"}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Tokens Sold */}
-            <div className="bg-white dark:bg-dark-800 rounded-xl shadow-sm border border-gray-200 dark:border-dark-700 p-6">
-              <div className="flex items-center">
-                <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
-                  <svg className="w-6 h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                  </svg>
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600 dark:text-dark-400">Sold</p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-dark-100">
-                    {icoData.tokenSold ? icoData.tokenSold.toString() : "0"}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ICO Details Section */}
-      <div className="max-w-2xl w-full mb-8 bg-white dark:bg-dark-800 rounded-xl shadow-sm border border-gray-200 dark:border-dark-700 p-6">
-        <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-dark-100">ICO Information</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <p className="text-sm font-medium text-gray-600 dark:text-dark-400">Network</p>
-            <p className="text-lg font-semibold text-gray-900 dark:text-dark-100">Solana</p>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-600 dark:text-dark-400">Entity</p>
-            <p className="text-lg font-semibold text-gray-900 dark:text-dark-100">Solana ICO Platform</p>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-600 dark:text-dark-400">Token Price</p>
-            <p className="text-lg font-semibold text-gray-900 dark:text-dark-100">0.001 SOL per token</p>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-600 dark:text-dark-400">Minimum Purchase</p>
-            <p className="text-lg font-semibold text-gray-900 dark:text-dark-100">1 token</p>
-          </div>
-        </div>
-        <div className="mt-4">
-          <p className="text-sm font-medium text-gray-600 dark:text-dark-400 mb-2">Token Name</p>
-          <p className="text-gray-700 dark:text-dark-300 text-sm font-semibold">
-            Rajat
-          </p>
-        </div>
+        {/* Gradient Orbs */}
+        <div className="absolute top-1/4 right-1/2 w-64 h-64 bg-gradient-radial from-blue-200/20 to-transparent dark:from-blue-800/20 rounded-full blur-xl animate-orb-float"></div>
+        <div className="absolute bottom-1/4 left-1/2 w-80 h-80 bg-gradient-radial from-purple-200/15 to-transparent dark:from-purple-800/15 rounded-full blur-2xl animate-orb-float-reverse"></div>
       </div>
+
+      {/* Main Content */}
+      <div className="relative z-10 w-full max-w-6xl mx-auto text-center">
+        <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-dark-100 text-center">Welcome to the ICO DApp</h1>
+
+        {/* ICO Information Section */}
+        {icoData && (
+          <div className="max-w-4xl w-full mb-8 mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+              {/* Token Supply */}
+              <div className="bg-white dark:bg-dark-800 rounded-xl shadow-sm border border-gray-200 dark:border-dark-700 p-6 text-center">
+                <div className="flex flex-col items-center">
+                  <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg mb-3">
+                    <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600 dark:text-dark-400">Total Supply</p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-dark-100">
+                      {icoData.totalTokens ? icoData.totalTokens.toString() : "0"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tokens Available */}
+              <div className="bg-white dark:bg-dark-800 rounded-xl shadow-sm border border-gray-200 dark:border-dark-700 p-6 text-center">
+                <div className="flex flex-col items-center">
+                  <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg mb-3">
+                    <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600 dark:text-dark-400">Available</p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-dark-100">
+                      {icoData.totalTokens && icoData.tokenSold ? (icoData.totalTokens - icoData.tokenSold).toString() : "0"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tokens Sold */}
+              <div className="bg-white dark:bg-dark-800 rounded-xl shadow-sm border border-gray-200 dark:border-dark-700 p-6 text-center">
+                <div className="flex flex-col items-center">
+                  <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg mb-3">
+                    <svg className="w-6 h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600 dark:text-dark-400">Sold</p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-dark-100">
+                      {icoData.tokenSold ? icoData.tokenSold.toString() : "0"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ICO Details Section */}
+        <div className="max-w-2xl w-full mb-8 mx-auto bg-white dark:bg-dark-800 rounded-xl shadow-sm border border-gray-200 dark:border-dark-700 p-6">
+          <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-dark-100">ICO Information</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm font-medium text-gray-600 dark:text-dark-400">Network</p>
+              <p className="text-lg font-semibold text-gray-900 dark:text-dark-100">Solana</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-600 dark:text-dark-400">Entity</p>
+              <p className="text-lg font-semibold text-gray-900 dark:text-dark-100">Solana ICO Platform</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-600 dark:text-dark-400">Token Price</p>
+              <p className="text-lg font-semibold text-gray-900 dark:text-dark-100">0.001 SOL per token</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-600 dark:text-dark-400">Minimum Purchase</p>
+              <p className="text-lg font-semibold text-gray-900 dark:text-dark-100">1 token</p>
+            </div>
+          </div>
+          <div className="mt-4">
+            <p className="text-sm font-medium text-gray-600 dark:text-dark-400 mb-2">Token Name</p>
+            <p className="text-gray-700 dark:text-dark-300 text-sm font-semibold">
+              Rajat
+            </p>
+          </div>
+        </div>
 
       <div className="flex flex-col items-center space-y-4">
         <WalletMultiButton className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors" />
@@ -404,7 +431,6 @@ export default function Home(){
         )}
       </div>
     </div>
+  </div>
   );
 }
-
-  
